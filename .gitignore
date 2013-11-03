@@ -3,3 +3,4 @@ target
 .classpath
 tags
 ctags
+.lib-src
