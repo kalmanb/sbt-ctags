@@ -1,4 +1,4 @@
-# sbt-ctags
+# sbt-ctags - Work In Progress
 
 Update ctags when sbt compiles. Assists when using vim for editing scala code.
 
