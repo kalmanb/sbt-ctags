@@ -3,32 +3,54 @@ package com.kalmanb.sbt
 import sbt.Keys._
 import sbt.Load.BuildStructure
 import sbt._
+import sbt.complete.DefaultParsers._
+import complete.Parser
 
 object CtagsPlugin extends Plugin {
 
   val ExternalSourcesDir = ".lib-src"
 
-  val ctagsAdd = TaskKey[Unit]("ctagsAdd", "")
-  val ctagsRemove = TaskKey[Unit]("ctagsRemove", "")
+  var ctagsSources: Map[ModuleID, File] = Map.empty
+
+  val ctagsLoad = TaskKey[Unit]("ctagsLoad", "")
+  val ctagsAdd = InputKey[Unit]("ctagsAdd", "")
+  val ctagsUpdate = TaskKey[Unit]("ctagsRemove", "")
+
+  import Project._
+  val artifactIdParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
+    resolvedScoped { ctx ⇒
+      (state: State) ⇒
+        val options = ctagsSources.map(_._1.name)
+        val tokens = options.map(token(_))
+        tokens.size match {
+          case n if (n > 1) ⇒ Space ~ tokens.reduce(_ | _)
+          case n if (n > 1) ⇒ Space ~ tokens.head
+          case _            ⇒ Space ~ token("you need to reload ctags (ctagsLoad)")
+        }
+    }
 
   val ctagsSettings = Seq[Setting[_]](
-    ctagsAdd <<= (thisProjectRef, buildStructure, state, allDependencies, defaultConfiguration, baseDirectory ) map {
-      (thisProjectRef, structure, state, deps, conf, base) ⇒
-        val sources = getSources(thisProjectRef, state, conf.get)
-        //sources foreach { a =>
-          //println (s"name: ${a._1.name}, file: $a._2")
-        //}
-        val toAdd = sources.filterKeys( _.name.contains("slf"))
-        toAdd foreach (source => unzipSource(sourceDir(base, source._1), source._1, source._2))
+    ctagsLoad <<= (thisProjectRef, state, defaultConfiguration) map {
+      (thisProjectRef, state, conf) ⇒
+        ctagsSources = getSources(thisProjectRef, state, conf.get)
+    },
+    ctagsAdd <<= InputTask(artifactIdParser) { args ⇒
+      (args, baseDirectory, streams) map { (args, base, streams) ⇒
+        val toAdd = ctagsSources.filterKeys(_.name == args._2)
+        toAdd foreach (source ⇒ {
+          streams.log.info(s"Adding src for ${args._2}")
+          unzipSource(sourceDir(base, source._1), source._1, source._2)
+        })
 
         updateCtags
+      }
     }
   )
 
   def getSources(project: ProjectRef, state: State, conf: Configuration): Map[ModuleID, File] = {
     val report = evaluateTask(Keys.updateClassifiers in configuration, project, state)
     report match {
-      case Some((_, Value(updateReport))) ⇒ { 
+      case Some((_, Value(updateReport))) ⇒ {
         val configurationReport = (updateReport configuration conf.name).toSeq
         val artifacts = for {
           report ← configurationReport
