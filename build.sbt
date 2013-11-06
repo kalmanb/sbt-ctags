@@ -4,14 +4,20 @@ name := "sbt-ctags"
 
 version := "0.1.0-SNAPSHOT"
 
+crossBuildingSettings
+
+CrossBuilding.crossSbtVersions := Seq("0.12", "0.13")
+
 sbtPlugin := true
 
 publishMavenStyle := false
 
 publishArtifact in Test := false
 
-libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
-  "junit" % "junit" % "4.11" % "test"
-)
+libraryDependencies += "junit" % "junit" % "4.11" % "test"
+
+libraryDependencies <+= scalaVersion { version ⇒
+  if (version startsWith "2.10") "org.scalatest" %% "scalatest" % "2.0"
+  else "org.scalatest" %% "scalatest" % "2.0.M6-SNAP3"
+}
 

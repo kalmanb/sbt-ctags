@@ -16,7 +16,7 @@ object CtagsPlugin extends Plugin {
 
   val ctagsLoad = TaskKey[Unit]("ctagsLoad", "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
   val ctagsAdd = InputKey[Unit]("ctagsAdd", "ctagsAdd <module-name> unzip the module src into .lib-src/ and re-run ctags")
-  val ctagsRemove = InputKey[Unit]("ctagsRemove", "<ctagsRemove <module> removes the module source and re-runs ctags")
+  val ctagsRemove = InputKey[Unit]("ctagsRemove", "ctagsRemove <module> removes the module source and re-runs ctags")
 
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
     ctagsLoad <<= (thisProjectRef, state, defaultConfiguration) map {
@@ -27,7 +27,7 @@ object CtagsPlugin extends Plugin {
       (args, baseDirectory, streams) map { (args, base, streams) ⇒
         val toAdd = ctagsSources.filterKeys(_.name == args._2)
         toAdd foreach (source ⇒ {
-          streams.log.info(s"Adding src for ${args._2}")
+          streams.log.info("Adding src for %s".format(args._2))
           unzipSource(sourceDir(base, source._1), source._1, source._2)
         })
         updateCtags(base)
@@ -112,7 +112,7 @@ object CtagsPlugin extends Plugin {
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
-          case _             ⇒ Space ~ token(s"no sources are currently included in $ExternalSourcesDir")
+          case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
         }
     }
 }

@@ -62,6 +62,38 @@ TBC
 ### sublime installation
 See (https://github.com/SublimeText/CTags)
 
+## Tasks
+
+    > help ctagsLoad 
+    > help ctagsAdd 
+    > help ctagsRemove
+
+## Configuration
+  def ExternalSourcesDir = ".lib-src"
+  def updateCtags(baseDirectory: File): Unit = {
+  
+
+## Contributing
+Go for it!
+
+    > git clone https://github.com/kalmanb/sbt-ctags
+    > cd sbt-ctags
+    > sbt
+    > ^^0.12         # Change sbt version
+    > compile
+    > ^ clean        # run command 'clean' for sbt versions
+
+Testing, use the playground
+
+    > cd sbt-ctags
+    > sbt
+    > publishLocal
+    > exit
+    > cd playground
+    > sbt
+    > ctagsLoad
+
+Tip: you can run `~/publishLocal` in the main dir and `reload` in the playground to update and test
 
 # License
 
