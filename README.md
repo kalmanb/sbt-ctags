@@ -9,7 +9,7 @@ First update your dependencies:
 
     > ctagsLoad
 
-Then select the dependency you wish to import:
+Then select the dependency you wish to import for example `scala-library`:
 
     > ctagsAdd <tab>...
     > ctagsAdd scala-library
@@ -42,7 +42,7 @@ Add:
 ### ctags installation
 Install exuberant-ctags / ctags as per your OS.
 
-Then you'll need to have ctags configured with scala definitions. An example is in `conf/ctags` copy/append it to `~/.ctags`
+Then you'll need to have ctags configured with scala definitions. An example is in [conf/ctags.example](https://github.com/kalmanb/sbt-ctags/blob/master/conf/ctags.example) copy/append it to `~/.ctags`
 
 If you run the following you should get a `tags` file created.
 
@@ -62,3 +62,9 @@ TBC
 ### sublime installation
 See (https://github.com/SublimeText/CTags)
 
+
+# License
+
+Copyright (c) 2013 Kalman Bekesi
+
+Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
