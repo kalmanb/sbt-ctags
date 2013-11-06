@@ -1,25 +1,64 @@
-# sbt-ctags - Work In Progress
+# sbt-ctags
 
-Update ctags when sbt compiles. Assists when using vim for editing scala code.
+sbt-ctags allows you to easily manage [Exuberant ctags](http://ctags.sourceforge.net/) for your project dependencies.
+
+For use with [vim](http://www.vim.org/), [Emacs](http://www.gnu.org/software/emacs/), [Sublime Text 2](http://www.sublimetext.com/) and others.
+
+## How it works - example
+First update your dependencies:
+
+    > ctagsLoad
+
+Then select the dependency you wish to import:
+
+    > ctagsAdd <tab>...
+    > ctagsAdd scala-library
+
+This will extract the `scala-library` source into `.lib-src/org.scala-lang.scala-library/` and run ctags over the whole project including the imported sources.
+
+Now you can use ctags to navigate the `scala-library` source.
+
+Make sure to add the following to your `.gitignore`
+
+    .lib-src
+    tags
+    ctags
 
 
-## Usage
-In your `project/plugins.sbt` add the following line:
+## Installation
 
-    addSbtPlugin("org.kalmanb" % "sbt-ctags" % "0.1.0")
+### sbt installation
+In one of these locations:
 
-Add your jenkins url to your project settings:
+    ~/.sbt/plugins/plugin.sbt          # for sbt 0.12
+    ~/.sbt/0.13/plugins/plugins.sbt    # for sbt 0.13
+    project/plugins.sbt                # only for your project
 
-    import org.kalmanb.sbt.CtagsPlugin._
+Add:
 
-    lazy val name = Project(
-       ...
-       settings = ctagsSettings ++ Seq( 
-         tbc := "..."
-      )
-    )
+    addSbtPlugin("org.kalmanb.sbt" % "sbt-ctags" % "0.1.0")
 
-## Configuration
 
-You'll need to have ctags configured for scala an example `~/.ctags` is in `conf/ctags`
+### ctags installation
+Install exuberant-ctags / ctags as per your OS.
+
+Then you'll need to have ctags configured with scala definitions. An example is in `conf/ctags` copy/append it to `~/.ctags`
+
+If you run the following you should get a `tags` file created.
+
+    > cd <project>
+    > ctags
+
+### vim installation
+Add the following to you `~/.vimrc`
+
+    set tags=./tags,tags,../tags
+
+
+### emacs installation
+TBC
+
+
+### sublime installation
+See (https://github.com/SublimeText/CTags)
 
