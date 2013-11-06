@@ -1,4 +1,4 @@
-organization := "com.kalmanb"
+organization := "com.kalmanb.sbt"
             
 name := "sbt-ctags"
 
