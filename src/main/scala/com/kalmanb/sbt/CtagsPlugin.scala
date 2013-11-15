@@ -14,14 +14,19 @@ object CtagsPlugin extends Plugin {
   // Cache for update report so that we only have to do it once per sbt session
   var ctagsSources: Map[ModuleID, File] = Map.empty
 
-  val ctagsLoad = TaskKey[Unit]("ctagsLoad", "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
+  val ctagsDownload = TaskKey[Unit]("ctagsDownload", "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
   val ctagsAdd = InputKey[Unit]("ctagsAdd", "ctagsAdd <module-name> unzip the module src into .lib-src/ and re-run ctags")
   val ctagsRemove = InputKey[Unit]("ctagsRemove", "ctagsRemove <module> removes the module source and re-runs ctags")
 
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
-    ctagsLoad <<= (thisProjectRef, state, defaultConfiguration) map {
-      (thisProjectRef, state, conf) ⇒
-        ctagsSources = getSources(thisProjectRef, state, conf.get)
+    ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
+      (thisProjectRef, state, conf, streams) ⇒
+        {
+          if (thisProjectRef.project.contains("root"))
+            ctagsSources = Map.empty
+          streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
+          ctagsSources = ctagsSources ++ getSources(thisProjectRef, state, conf.get)
+        }
     },
     ctagsAdd <<= InputTask(ctagsAddParser) { args ⇒
       (args, baseDirectory, streams) map { (args, base, streams) ⇒
@@ -98,7 +103,7 @@ object CtagsPlugin extends Plugin {
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
-          case _             ⇒ Space ~ token("you need to reload ctags (ctagsLoad)")
+          case _             ⇒ Space ~ token("you need to reload ctags (ctagsDownload)")
         }
     }
 

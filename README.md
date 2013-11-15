@@ -7,14 +7,14 @@ For use with [vim](http://www.vim.org/), [Emacs](http://www.gnu.org/software/ema
 ## How it works - example
 First update your dependencies:
 
-    > ctagsLoad
+    > ctagsDownload
 
 Then select the dependency you wish to import for example `scala-library`:
 
     > ctagsAdd <tab>...
     > ctagsAdd scala-library
 
-This will extract the `scala-library` source into `.lib-src/org.scala-lang.scala-library/` and run ctags over the whole project including the imported sources.
+This will extract the `scala-library` source into `.lib-src/org.scala-lang.scala-library/` and run ctags over the whole project including the imported sources. Both Java and Scala libs can be added.
 
 Now you can use ctags to navigate the `scala-library` source.
 
@@ -36,7 +36,7 @@ In one of these locations:
 
 Add:
 
-    addSbtPlugin("org.kalmanb.sbt" % "sbt-ctags" % "0.1.0")
+    addSbtPlugin("com.kalmanb.sbt" % "sbt-ctags" % "0.1.0")
 
 
 ### ctags installation
@@ -64,7 +64,7 @@ See (https://github.com/SublimeText/CTags)
 
 ## Tasks
 
-    > help ctagsLoad 
+    > help ctagsDownload
     > help ctagsAdd 
     > help ctagsRemove
 
@@ -91,9 +91,12 @@ Testing, use the playground
     > exit
     > cd playground
     > sbt
-    > ctagsLoad
+    > ctagsDownload
 
-Tip: you can run `~/publishLocal` in the main dir and `reload` in the playground to update and test
+Tip: you can run `~/publish-local` in the main dir and `reload` in the playground to update and test
+
+## Road Map
+Currently working on making `ctagAdd` not dependant on `ctagLoad` to make adding faster and easier.
 
 # License
 
