@@ -8,21 +8,14 @@ import complete.Parser
 import scala.collection.mutable
 
 object CtagsPlugin extends Plugin {
-
   /** Can be overridden to put in a different location */
   def ExternalSourcesDir = ".lib-src"
-  def ivyBaseDir = new java.io.File("~/.ivy2/cache")
-
-  // Cache for update report so that we only have to do it once per sbt session
-  var ctagsSources: Map[ModuleID, File] = Map.empty
-  val allDeps: mutable.Set[ModuleID] = mutable.Set.empty
 
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
-  val ctagsAdd = InputKey[Unit]("ctagsAdd", "ctagsAdd <module-name> unzip the module src into .lib-src/ and re-run ctags")
   val ctagsRemove = InputKey[Unit]("ctagsRemove", "ctagsRemove <module> removes the module source and re-runs ctags")
 
-  def helloAll = Command.args("helloAll", "<name>") { (state, args) ⇒
+  def ctagsAdd = Command.args("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags") { (state, args) ⇒
     val baseDir = state.configuration.baseDirectory
     getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
       case Nil ⇒
@@ -37,6 +30,7 @@ object CtagsPlugin extends Plugin {
         }
         srcFile
     }
+    updateCtags(baseDir)
     state
   }
 
@@ -76,23 +70,10 @@ object CtagsPlugin extends Plugin {
   }
 
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
-    commands ++= Seq(helloAll),
+    commands ++= Seq(ctagsAdd),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
-        if (thisProjectRef.project.contains("root"))
-          ctagsSources = Map.empty
         streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
-        ctagsSources = ctagsSources ++ getSources(thisProjectRef, state, conf.get)
-    },
-    ctagsAdd <<= InputTask(ctagsAddParser) { args ⇒
-      (args, baseDirectory, streams) map { (args, base, streams) ⇒
-        val toAdd = ctagsSources.filterKeys(_.name == args._2)
-        toAdd foreach (source ⇒ {
-          streams.log.info("Adding src for %s".format(args._2))
-          unzipSource(sourceDir(base, source._1), source._1, source._2)
-        })
-        updateCtags(base)
-      }
     },
     ctagsRemove <<= InputTask(ctagsRemoveParser) { args ⇒
       (args, baseDirectory, streams) map { (args, base, streams) ⇒
