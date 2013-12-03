@@ -5,28 +5,84 @@ import sbt.Load.BuildStructure
 import sbt._
 import sbt.complete.DefaultParsers._
 import complete.Parser
+import scala.collection.mutable
 
 object CtagsPlugin extends Plugin {
 
   /** Can be overridden to put in a different location */
   def ExternalSourcesDir = ".lib-src"
+  def ivyBaseDir = new java.io.File("~/.ivy2/cache")
 
   // Cache for update report so that we only have to do it once per sbt session
   var ctagsSources: Map[ModuleID, File] = Map.empty
+  val allDeps: mutable.Set[ModuleID] = mutable.Set.empty
 
-  val ctagsDownload = TaskKey[Unit]("ctagsDownload", "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
+  val ctagsDownload = TaskKey[Unit]("ctagsDownload",
+    "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
   val ctagsAdd = InputKey[Unit]("ctagsAdd", "ctagsAdd <module-name> unzip the module src into .lib-src/ and re-run ctags")
   val ctagsRemove = InputKey[Unit]("ctagsRemove", "ctagsRemove <module> removes the module source and re-runs ctags")
 
+  def helloAll = Command.args("helloAll", "<name>") { (state, args) ⇒
+    val baseDir = state.configuration.baseDirectory
+    getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
+      case Nil ⇒
+        println("Error could not find %s in dependencies".format(args)); None
+      case (head :: tail) ⇒
+        val splits = head.toString.split(":")
+        val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
+        val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
+        srcFile match {
+          case None         ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
+          case Some(srcJar) ⇒ unzipSource(sourceDir(baseDir, moduleID), moduleID, srcJar)
+        }
+        srcFile
+    }
+    state
+  }
+
+  def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
+    val extracted = Project.extract(state)
+    val ivyDir = extracted.get(ivyPaths).ivyHome match {
+      case None ⇒
+        println("Error could not find ivyHome"); None
+      case Some(dir) ⇒ Some(dir / "cache")
+    }
+    for { ivy ← ivyDir } yield getSrcFile(ivy, moduleID)
+  }
+
+  def getSrcFile(ivyDir: File, moduleID: ModuleID): File = {
+    ivyDir / moduleID.organization / moduleID.name / "srcs" / (moduleID.name + "-" + moduleID.revision + "-sources.jar")
+  }
+
+  def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
+    //val result = Project.evaluateTask(taskKey, state)
+    val taskKey = Keys.allDependencies in Test
+    val structure = Project.extract(state).structure
+    val projectRefs = structure.allProjectRefs
+
+    def getProjectModules(ref: ProjectRef): Seq[ModuleID] = {
+      val updateReport = EvaluateTask(structure, Keys.update, state, ref, EvaluateTask defaultConfig state)
+
+      val modules: Seq[ModuleID] = for {
+        (_, result) ← updateReport.toSeq
+        report ← result.toEither.right.toOption.toSeq
+        configReport ← report.configuration("test").toSeq
+        allModules ← configReport.allModules
+      } yield allModules
+      modules
+    }
+    val allModules: Set[ModuleID] = (projectRefs flatMap (getProjectModules)).toSet
+    allModules
+  }
+
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
+    commands ++= Seq(helloAll),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
-        {
-          if (thisProjectRef.project.contains("root"))
-            ctagsSources = Map.empty
-          streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
-          ctagsSources = ctagsSources ++ getSources(thisProjectRef, state, conf.get)
-        }
+        if (thisProjectRef.project.contains("root"))
+          ctagsSources = Map.empty
+        streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
+        ctagsSources = ctagsSources ++ getSources(thisProjectRef, state, conf.get)
     },
     ctagsAdd <<= InputTask(ctagsAddParser) { args ⇒
       (args, baseDirectory, streams) map { (args, base, streams) ⇒
@@ -58,7 +114,7 @@ object CtagsPlugin extends Plugin {
   def getSources(project: ProjectRef, state: State, conf: Configuration): Map[ModuleID, File] = {
     val report = evaluateTask(Keys.updateClassifiers in configuration, project, state)
     report match {
-      case Some((_, Value(updateReport))) ⇒ {
+      case Some((_, Value(updateReport))) ⇒
         val configurationReport = (updateReport configuration conf.name).toSeq
         val artifacts = for {
           report ← configurationReport
@@ -66,7 +122,6 @@ object CtagsPlugin extends Plugin {
           (art, file) ← module.artifacts if (art.classifier == Some("sources")) // Only keep modules with src
         } yield module.module -> file
         artifacts.toMap
-      }
       case _ ⇒ Map.empty
     }
   }
@@ -95,19 +150,22 @@ object CtagsPlugin extends Plugin {
   }
 
   import Project._
-  val ctagsAddParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
+  lazy val ctagsAddParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
     resolvedScoped { ctx ⇒
       (state: State) ⇒
-        val options = ctagsSources.map(_._1.name)
-        val tokens = options.map(token(_))
+        val options = getAllModulesFromAllProjects(state) map (_.toString)
+        val tokens = options map (token(_))
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
-          case _             ⇒ Space ~ token("you need to reload ctags (ctagsDownload)")
         }
     }
 
-  val ctagsRemoveParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
+  def parser: Parser[Seq[(String, Any)]] = {
+    null
+  }
+
+  lazy val ctagsRemoveParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
     (resolvedScoped, baseDirectory) { (ctx, base) ⇒
       (state: State) ⇒
         val sourcesDir = base / ExternalSourcesDir
