@@ -13,9 +13,12 @@ object CtagsPlugin extends Plugin {
 
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
-  val ctagsRemove = InputKey[Unit]("ctagsRemove", "ctagsRemove <module> removes the module source and re-runs ctags")
+  val ctagsRemove = InputKey[Unit]("ctagsRemove", 
+    "ctagsRemove <module> removes the module source and re-runs ctags")
 
-  def ctagsAdd = Command.args("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags") { (state, args) ⇒
+  //def ctagsAdd = Command("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags")(ctagsAddParser)
+  def ctagsAdd = Command("ctagsAdd")(ctagsAddParser)
+    { (state, args) ⇒
     val baseDir = state.configuration.baseDirectory
     getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
       case Nil ⇒
@@ -32,20 +35,6 @@ object CtagsPlugin extends Plugin {
     }
     updateCtags(baseDir)
     state
-  }
-
-  def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
-    val extracted = Project.extract(state)
-    val ivyDir = extracted.get(ivyPaths).ivyHome match {
-      case None ⇒
-        println("Error could not find ivyHome"); None
-      case Some(dir) ⇒ Some(dir / "cache")
-    }
-    for { ivy ← ivyDir } yield getSrcFile(ivy, moduleID)
-  }
-
-  def getSrcFile(ivyDir: File, moduleID: ModuleID): File = {
-    ivyDir / moduleID.organization / moduleID.name / "srcs" / (moduleID.name + "-" + moduleID.revision + "-sources.jar")
   }
 
   def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
@@ -118,6 +107,20 @@ object CtagsPlugin extends Plugin {
     baseDirectory / ExternalSourcesDir / dir
   }
 
+  def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
+    val extracted = Project.extract(state)
+    val ivyDir = extracted.get(ivyPaths).ivyHome match {
+      case None ⇒
+        println("Error could not find ivyHome"); None
+      case Some(dir) ⇒ Some(dir / "cache")
+    }
+    for { ivy ← ivyDir } yield getSrcFile(ivy, moduleID)
+  }
+
+  def getSrcFile(ivyDir: File, moduleID: ModuleID): File = {
+    ivyDir / moduleID.organization / moduleID.name / "srcs" / (moduleID.name + "-" + moduleID.revision + "-sources.jar")
+  }
+
   /**
    * Runs after add and remove - can be overridden if a different command is required
    * or a different indexer is used
@@ -131,16 +134,15 @@ object CtagsPlugin extends Plugin {
   }
 
   import Project._
-  lazy val ctagsAddParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
-    resolvedScoped { ctx ⇒
-      (state: State) ⇒
+  lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
+      (state: State) ⇒ {
         val options = getAllModulesFromAllProjects(state) map (_.toString)
         val tokens = options map (token(_))
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
         }
-    }
+      }
 
   def parser: Parser[Seq[(String, Any)]] = {
     null
