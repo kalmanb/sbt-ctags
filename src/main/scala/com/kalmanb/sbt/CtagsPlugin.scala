@@ -13,12 +13,12 @@ object CtagsPlugin extends Plugin {
 
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
-  val ctagsRemove = InputKey[Unit]("ctagsRemove", 
+  val ctagsRemove = InputKey[Unit]("ctagsRemove",
     "ctagsRemove <module> removes the module source and re-runs ctags")
 
+  // TODO - help text
   //def ctagsAdd = Command("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags")(ctagsAddParser)
-  def ctagsAdd = Command("ctagsAdd")(ctagsAddParser)
-    { (state, args) ⇒
+  def ctagsAdd = Command("ctagsAdd", Help("help", ("one", "two"), "detailed"))(ctagsAddParser) { (state, args) ⇒
     val baseDir = state.configuration.baseDirectory
     getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
       case Nil ⇒
@@ -135,14 +135,14 @@ object CtagsPlugin extends Plugin {
 
   import Project._
   lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
-      (state: State) ⇒ {
-        val options = getAllModulesFromAllProjects(state) map (_.toString)
-        val tokens = options map (token(_))
-        tokens.size match {
-          case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
-          case n if (n == 1) ⇒ Space ~ tokens.head
-        }
+    (state: State) ⇒ {
+      val options = getAllModulesFromAllProjects(state) map (_.toString)
+      val tokens = options map (token(_))
+      tokens.size match {
+        case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
+        case n if (n == 1) ⇒ Space ~ tokens.head
       }
+    }
 
   def parser: Parser[Seq[(String, Any)]] = {
     null
