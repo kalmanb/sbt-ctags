@@ -18,24 +18,25 @@ object CtagsPlugin extends Plugin {
 
   // TODO - help text
   //def ctagsAdd = Command("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags")(ctagsAddParser)
-  def ctagsAdd = Command("ctagsAdd", Help("help", ("one", "two"), "detailed"))(ctagsAddParser) { (state, args) ⇒
-    val baseDir = state.configuration.baseDirectory
-    getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
-      case Nil ⇒
-        println("Error could not find %s in dependencies".format(args)); None
-      case (head :: tail) ⇒
-        val splits = head.toString.split(":")
-        val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
-        val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
-        srcFile match {
-          case None         ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
-          case Some(srcJar) ⇒ unzipSource(sourceDir(baseDir, moduleID), moduleID, srcJar)
-        }
-        srcFile
+  def ctagsAdd = Command("ctagsAdd",
+    Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
+      val baseDir = state.configuration.baseDirectory
+      getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
+        case Nil ⇒
+          println("Error could not find %s in dependencies".format(args)); None
+        case (head :: tail) ⇒
+          val splits = head.toString.split(":")
+          val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
+          val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
+          srcFile match {
+            case None         ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
+            case Some(srcJar) ⇒ unzipSource(sourceDir(baseDir, moduleID), moduleID, srcJar)
+          }
+          srcFile
+      }
+      updateCtags(baseDir)
+      state
     }
-    updateCtags(baseDir)
-    state
-  }
 
   def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
     //val result = Project.evaluateTask(taskKey, state)
