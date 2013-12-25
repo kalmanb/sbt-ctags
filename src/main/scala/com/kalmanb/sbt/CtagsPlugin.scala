@@ -16,8 +16,6 @@ object CtagsPlugin extends Plugin {
   val ctagsRemove = InputKey[Unit]("ctagsRemove",
     "ctagsRemove <module> removes the module source and re-runs ctags")
 
-  // TODO - help text
-  //def ctagsAdd = Command("ctagsAdd", "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags")(ctagsAddParser)
   def ctagsAdd = Command("ctagsAdd",
     Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
       val baseDir = state.configuration.baseDirectory
