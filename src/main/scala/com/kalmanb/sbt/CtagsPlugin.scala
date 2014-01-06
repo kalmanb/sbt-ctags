@@ -19,21 +19,23 @@ object CtagsPlugin extends Plugin {
   def ctagsAdd = Command("ctagsAdd",
     Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
       val baseDir = state.configuration.baseDirectory
-      getAllModulesFromAllProjects(state).filter(_.name startsWith args._2).toSeq match {
-        case Nil ⇒
+      val allModules = getAllModulesFromAllProjects(state) map (_.toString)
+
+      allModules.filter(_ startsWith args._2).headOption match {
+        case None ⇒
           println("Error could not find %s in dependencies".format(args)); None
-        case (head :: tail) ⇒
-          val splits = head.toString.split(":")
+        case Some(module) ⇒
+          val splits = module.split(":")
           val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
           val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
           srcFile match {
-            case None         ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
-            case Some(srcJar) ⇒ unzipSource(sourceDir(baseDir, moduleID), moduleID, srcJar)
+            case None ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
+            case Some(srcJar) ⇒
+              val dest = sourceDir(baseDir, moduleID)
+              unzipSource(srcJar, dest)
           }
-          srcFile
+          updateCtags(baseDir)
       }
-      // TODO only on success
-      updateCtags(baseDir)
       state
     }
 
@@ -80,7 +82,7 @@ object CtagsPlugin extends Plugin {
     }
   )
 
-  def unzipSource(dest: File, moduleId: ModuleID, sourceJar: File): Unit = {
+  def unzipSource(sourceJar: File, dest: File): Unit = {
     IO.delete(dest)
     IO.createDirectory(dest)
     IO.unzip(sourceJar, dest)
@@ -94,7 +96,7 @@ object CtagsPlugin extends Plugin {
   def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
     val extracted = Project.extract(state)
     val ivyDir = extracted.get(ivyPaths).ivyHome match {
-      case None      ⇒
+      case None ⇒
         println("Error could not find ivyHome"); None
       case Some(dir) ⇒ Some(dir / "cache")
     }
@@ -135,6 +137,7 @@ object CtagsPlugin extends Plugin {
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
+          // TODO - not working as expected
           case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
         }
     }
