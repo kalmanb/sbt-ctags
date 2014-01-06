@@ -38,7 +38,7 @@ object CtagsPlugin extends Plugin {
 
   def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
     //val result = Project.evaluateTask(taskKey, state)
-    val taskKey = Keys.allDependencies in Test
+    //val taskKey = Keys.allDependencies in Test
     val structure = Project.extract(state).structure
     val projectRefs = structure.allProjectRefs
 
@@ -53,6 +53,7 @@ object CtagsPlugin extends Plugin {
       } yield allModules
       modules
     }
+    // Cache so we just load it once
     val allModules: Set[ModuleID] = (projectRefs flatMap (getProjectModules)).toSet
     allModules
   }
@@ -62,6 +63,8 @@ object CtagsPlugin extends Plugin {
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
         streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
+        val structure = Project.extract(state).structure
+        EvaluateTask(structure, Keys.updateClassifiers, state, thisProjectRef, EvaluateTask defaultConfig state)
     },
     ctagsRemove <<= InputTask(ctagsRemoveParser) { args ⇒
       (args, baseDirectory, streams) map { (args, base, streams) ⇒
@@ -80,20 +83,20 @@ object CtagsPlugin extends Plugin {
   /**
    * Runs an sbt update including downloading sources.
    */
-  def getSources(project: ProjectRef, state: State, conf: Configuration): Map[ModuleID, File] = {
-    val report = evaluateTask(Keys.updateClassifiers in configuration, project, state)
-    report match {
-      case Some((_, Value(updateReport))) ⇒
-        val configurationReport = (updateReport configuration conf.name).toSeq
-        val artifacts = for {
-          report ← configurationReport
-          module ← report.modules
-          (art, file) ← module.artifacts if (art.classifier == Some("sources")) // Only keep modules with src
-        } yield module.module -> file
-        artifacts.toMap
-      case _ ⇒ Map.empty
-    }
-  }
+  //def getSources(project: ProjectRef, state: State, conf: Configuration): Map[ModuleID, File] = {
+    //val report = evaluateTask(Keys.updateClassifiers in configuration, project, state)
+    //report match {
+      //case Some((_, Value(updateReport))) ⇒
+        //val configurationReport = (updateReport configuration conf.name).toSeq
+        //val artifacts = for {
+          //report ← configurationReport
+          //module ← report.modules
+          //(art, file) ← module.artifacts if (art.classifier == Some("sources")) // Only keep modules with src
+        //} yield module.module -> file
+        //artifacts.toMap
+      //case _ ⇒ Map.empty
+    //}
+  //}
 
   def unzipSource(dest: File, moduleId: ModuleID, sourceJar: File): Unit = {
     IO.delete(dest)
@@ -128,10 +131,6 @@ object CtagsPlugin extends Plugin {
     "ctags" !
   }
 
-  def evaluateTask[A](key: TaskKey[A], ref: ProjectRef, state: State): Option[(sbt.State, sbt.Result[A])] = {
-    EvaluateTask(Project.extract(state).structure, key, state, ref, EvaluateTask defaultConfig state)
-  }
-
   import Project._
   lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
     (state: State) ⇒ {
@@ -142,10 +141,6 @@ object CtagsPlugin extends Plugin {
         case n if (n == 1) ⇒ Space ~ tokens.head
       }
     }
-
-  def parser: Parser[Seq[(String, Any)]] = {
-    null
-  }
 
   lazy val ctagsRemoveParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
     (resolvedScoped, baseDirectory) { (ctx, base) ⇒
@@ -160,5 +155,10 @@ object CtagsPlugin extends Plugin {
           case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
         }
     }
+
+  def evaluateTask[A](key: TaskKey[A], ref: ProjectRef, state: State): Option[(sbt.State, sbt.Result[A])] = {
+    EvaluateTask(Project.extract(state).structure, key, state, ref, EvaluateTask defaultConfig state)
+  }
+
 }
 
