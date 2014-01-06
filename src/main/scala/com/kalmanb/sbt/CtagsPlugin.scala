@@ -19,7 +19,7 @@ object CtagsPlugin extends Plugin {
   def ctagsAdd = Command("ctagsAdd",
     Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
       val baseDir = state.configuration.baseDirectory
-      getAllModulesFromAllProjects(state).filter(_.name == args).toSeq match {
+      getAllModulesFromAllProjects(state).filter(_.name startsWith args._2).toSeq match {
         case Nil ⇒
           println("Error could not find %s in dependencies".format(args)); None
         case (head :: tail) ⇒
@@ -32,13 +32,12 @@ object CtagsPlugin extends Plugin {
           }
           srcFile
       }
+      // TODO only on success
       updateCtags(baseDir)
       state
     }
 
   def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
-    //val result = Project.evaluateTask(taskKey, state)
-    //val taskKey = Keys.allDependencies in Test
     val structure = Project.extract(state).structure
     val projectRefs = structure.allProjectRefs
 
@@ -54,6 +53,7 @@ object CtagsPlugin extends Plugin {
       modules
     }
     // Cache so we just load it once
+    // Get dependencies for all projects
     val allModules: Set[ModuleID] = (projectRefs flatMap (getProjectModules)).toSet
     allModules
   }
@@ -80,24 +80,6 @@ object CtagsPlugin extends Plugin {
     }
   )
 
-  /**
-   * Runs an sbt update including downloading sources.
-   */
-  //def getSources(project: ProjectRef, state: State, conf: Configuration): Map[ModuleID, File] = {
-    //val report = evaluateTask(Keys.updateClassifiers in configuration, project, state)
-    //report match {
-      //case Some((_, Value(updateReport))) ⇒
-        //val configurationReport = (updateReport configuration conf.name).toSeq
-        //val artifacts = for {
-          //report ← configurationReport
-          //module ← report.modules
-          //(art, file) ← module.artifacts if (art.classifier == Some("sources")) // Only keep modules with src
-        //} yield module.module -> file
-        //artifacts.toMap
-      //case _ ⇒ Map.empty
-    //}
-  //}
-
   def unzipSource(dest: File, moduleId: ModuleID, sourceJar: File): Unit = {
     IO.delete(dest)
     IO.createDirectory(dest)
@@ -112,7 +94,7 @@ object CtagsPlugin extends Plugin {
   def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
     val extracted = Project.extract(state)
     val ivyDir = extracted.get(ivyPaths).ivyHome match {
-      case None ⇒
+      case None      ⇒
         println("Error could not find ivyHome"); None
       case Some(dir) ⇒ Some(dir / "cache")
     }
@@ -135,7 +117,8 @@ object CtagsPlugin extends Plugin {
   lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
     (state: State) ⇒ {
       val options = getAllModulesFromAllProjects(state) map (_.toString)
-      val tokens = options map (token(_))
+      val cleanOptions = options map (_.replace(":test", "").replace("()", ""))
+      val tokens = cleanOptions map (token(_))
       tokens.size match {
         case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
         case n if (n == 1) ⇒ Space ~ tokens.head

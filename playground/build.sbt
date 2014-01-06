@@ -11,6 +11,7 @@ libraryDependencies ++= Seq()
 
 lazy val subA = project in file("sub-a") settings (
   libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.0.13"
+  //libraryDependencies += "com.icegreen" % "greenmail" % "1.3.1b"
 )
 
 lazy val subB= project in file("sub-b") settings (
