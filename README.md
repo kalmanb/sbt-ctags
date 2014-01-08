@@ -12,7 +12,7 @@ First update your dependencies:
 Then select the dependency you wish to import for example `scala-library`:
 
     > ctagsAdd <tab>...
-    > ctagsAdd scala-library
+    > ctagsAdd org.scala-lang...
 
 This will extract the `scala-library` source into `.lib-src/org.scala-lang.scala-library/` and run ctags over the whole project including the imported sources. Both Java and Scala libs can be added.
 
@@ -69,11 +69,14 @@ See (https://github.com/SublimeText/CTags)
     > help ctagsRemove
 
 ## Configuration
-  def ExternalSourcesDir = ".lib-src"
-  def updateCtags(baseDirectory: File): Unit = {
+The following can be extended as necessary. Examples to follow soon.
+
+    def ExternalSourcesDir = ".lib-src"
+    def updateCtags(baseDirectory: File): Unit = {
+    }
   
 
-## Contributing
+## Contributing / Compiling
 Go for it!
 
     > git clone https://github.com/kalmanb/sbt-ctags
@@ -87,7 +90,8 @@ Testing, use the playground
 
     > cd sbt-ctags
     > sbt
-    > publishLocal
+    > ^^0.13
+    > publish-local
     > exit
     > cd playground
     > sbt
@@ -96,7 +100,7 @@ Testing, use the playground
 Tip: you can run `~/publish-local` in the main dir and `reload` in the playground to update and test
 
 ## Road Map
-Currently working on making `ctagAdd` not dependant on `ctagLoad` to make adding faster and easier.
+See (https://github.com/kalmanb/sbt-ctags/issues)
 
 # License
 

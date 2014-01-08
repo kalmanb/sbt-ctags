@@ -51,7 +51,7 @@ object CtagsPlugin extends Plugin {
     }
 
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
-    "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
+    "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources. Can be done on a project by project basis")
 
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
     commands ++= Seq(ctagsAdd, ctagsRemove),
