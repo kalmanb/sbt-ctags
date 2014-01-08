@@ -121,7 +121,7 @@ object CtagsPlugin extends Plugin {
   lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
     (state: State) ⇒ {
       val options = getAllModulesFromAllProjects(state) map (_.toString)
-      val cleanOptions = options map (_.replace(":test", "").replace("()", ""))
+      val cleanOptions = options map (_.replace(":test", "").replace("()", "").trim)
       val tokens = (cleanOptions map (token(_))).toSet
       tokens.size match {
         case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
