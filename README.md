@@ -24,6 +24,11 @@ Make sure to add the following to your `.gitignore`
     tags
     ctags
 
+You can remove a library for your tags file with:
+
+    > ctagsRemove <tab>...
+    > ctagsRemove org.scala-lang...
+
 
 ## Installation
 
