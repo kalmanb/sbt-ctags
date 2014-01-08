@@ -11,10 +11,6 @@ object CtagsPlugin extends Plugin {
   /** Can be overridden to put in a different location */
   def ExternalSourcesDir = ".lib-src"
 
-  val ctagsDownload = TaskKey[Unit]("ctagsDownload",
-    "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
-  val ctagsRemove = InputKey[Unit]("ctagsRemove",
-    "ctagsRemove <module> removes the module source and re-runs ctags")
 
   def ctagsAdd = Command("ctagsAdd",
     Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
@@ -39,25 +35,31 @@ object CtagsPlugin extends Plugin {
       state
     }
 
+  def ctagsRemove = Command("ctagsRemove",
+    Help("ctagsRemove", ("", ""), "ctagsRemove <module> removes the module source and re-runs ctags"))(ctagsRemoveParser) { (state, args) ⇒ {
+        val name = args._2
+        val baseDir = state.configuration.baseDirectory
+        val dirs = IO.listFiles(baseDir / ExternalSourcesDir, DirectoryFilter)
+        val toRemove = dirs.filter(_.getPath.endsWith(name))
+        toRemove foreach (dir ⇒ {
+          IO.delete(dir)
+          println("Removed src dir %s".format(dir.getPath.replaceAll(baseDir + "/", "")))
+        })
+        updateCtags(baseDir)
+      }
+      state
+    }
+
+  val ctagsDownload = TaskKey[Unit]("ctagsDownload",
+    "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources")
+
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
-    commands ++= Seq(ctagsAdd),
+    commands ++= Seq(ctagsAdd, ctagsRemove),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
         streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
         val structure = Project.extract(state).structure
         EvaluateTask(structure, Keys.updateClassifiers, state, thisProjectRef, EvaluateTask defaultConfig state)
-    },
-    ctagsRemove <<= InputTask(ctagsRemoveParser) { args ⇒
-      (args, baseDirectory, streams) map { (args, base, streams) ⇒
-        val name = args._2
-        val dirs = IO.listFiles(base / ExternalSourcesDir, DirectoryFilter)
-        val toRemove = dirs.filter(_.getPath.endsWith(name))
-        toRemove foreach (dir ⇒ {
-          IO.delete(dir)
-          streams.log.info("Removed src dir %s".format(dir.getPath.replaceAll(base + "/", "")))
-        })
-        updateCtags(base)
-      }
     }
   )
 
@@ -127,17 +129,16 @@ object CtagsPlugin extends Plugin {
       }
     }
 
-  lazy val ctagsRemoveParser: Initialize[State ⇒ Parser[(Seq[Char], String)]] =
-    (resolvedScoped, baseDirectory) { (ctx, base) ⇒
-      (state: State) ⇒
-        val sourcesDir = base / ExternalSourcesDir
+  lazy val ctagsRemoveParser: State ⇒ Parser[(Seq[Char], String)] =
+      (state: State) ⇒ {
+        val baseDir = state.configuration.baseDirectory
+        val sourcesDir = baseDir / ExternalSourcesDir
         val dirs = IO.listFiles(sourcesDir, DirectoryFilter)
         val shortNames = dirs.map(_.getPath.replaceAll(sourcesDir.getPath + "/", ""))
         val tokens = shortNames.map(name ⇒ token(name))
         tokens.size match {
           case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
           case n if (n == 1) ⇒ Space ~ tokens.head
-          // TODO - not working as expected
           case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
         }
     }
