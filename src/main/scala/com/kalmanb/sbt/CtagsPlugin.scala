@@ -39,27 +39,6 @@ object CtagsPlugin extends Plugin {
       state
     }
 
-  def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
-    val structure = Project.extract(state).structure
-    val projectRefs = structure.allProjectRefs
-
-    def getProjectModules(ref: ProjectRef): Seq[ModuleID] = {
-      val updateReport = EvaluateTask(structure, Keys.update, state, ref, EvaluateTask defaultConfig state)
-
-      val modules: Seq[ModuleID] = for {
-        (_, result) ← updateReport.toSeq
-        report ← result.toEither.right.toOption.toSeq
-        configReport ← report.configuration("test").toSeq
-        allModules ← configReport.allModules
-      } yield allModules
-      modules
-    }
-    // Cache so we just load it once
-    // Get dependencies for all projects
-    val allModules: Set[ModuleID] = (projectRefs flatMap (getProjectModules)).toSet
-    allModules
-  }
-
   override def settings: Seq[Setting[_]] = Seq[Setting[_]](
     commands ++= Seq(ctagsAdd),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
@@ -81,6 +60,27 @@ object CtagsPlugin extends Plugin {
       }
     }
   )
+
+  def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
+    val structure = Project.extract(state).structure
+    val projectRefs = structure.allProjectRefs
+
+    def getProjectModules(ref: ProjectRef): Seq[ModuleID] = {
+      val updateReport = EvaluateTask(structure, Keys.update, state, ref, EvaluateTask defaultConfig state)
+
+      val modules: Seq[ModuleID] = for {
+        (_, result) ← updateReport.toSeq
+        report ← result.toEither.right.toOption.toSeq
+        configReport ← report.configuration("test").toSeq
+        allModules ← configReport.allModules
+      } yield allModules
+      modules
+    }
+    // Cache so we just load it once
+    // Get dependencies for all projects
+    val allModules: Set[ModuleID] = (projectRefs flatMap (getProjectModules)).toSet
+    allModules
+  }
 
   def unzipSource(sourceJar: File, dest: File): Unit = {
     IO.delete(dest)
