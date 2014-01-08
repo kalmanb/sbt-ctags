@@ -14,7 +14,7 @@ publishMavenStyle := false
 
 publishArtifact in Test := false
 
-//publishTo := Some(Resolver.url("repo", new URL())(Resolver.ivyStylePatterns))
+publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
 
 libraryDependencies += "junit" % "junit" % "4.11" % "test"
 
