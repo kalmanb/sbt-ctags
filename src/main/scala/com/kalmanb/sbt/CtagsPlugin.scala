@@ -120,7 +120,7 @@ object CtagsPlugin extends Plugin {
     (state: State) ⇒ {
       val options = getAllModulesFromAllProjects(state) map (_.toString)
       val cleanOptions = options map (_.replace(":test", "").replace("()", ""))
-      val tokens = cleanOptions map (token(_))
+      val tokens = (cleanOptions map (token(_))).toSet
       tokens.size match {
         case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
         case n if (n == 1) ⇒ Space ~ tokens.head
