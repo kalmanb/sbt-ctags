@@ -73,6 +73,7 @@ See (https://github.com/SublimeText/CTags)
 
     > help ctagsDownload
     > help ctagsAdd 
+    > help ctagsShowCurrent 
     > help ctagsRemove
     > help ctagsRemoveAll
 
@@ -106,6 +107,25 @@ Testing, use the playground
     > ctagsDownload
 
 Tip: you can run `~/publish-local` in the main dir and `reload` in the playground to update and test
+
+## Change Log
+
+### 0.3.0
+Features:
+* Add ctagsRemoveAll
+* Add ctagsShowCurrent
+* Add version numbers sources
+
+### 0.2.0
+Features:
+* Allow customisation of destination directory to store sources
+* Allow customisation of command executed when new sources are added and removed
+
+### 0.1.0
+Initial version:
+* Add ctagsDownload
+* Add ctagsAdd
+* Add ctagsRemove
 
 ## Road Map
 See (https://github.com/kalmanb/sbt-ctags/issues)
