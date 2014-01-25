@@ -116,6 +116,9 @@ Features:
 * Add ctagsShowCurrent
 * Add version numbers sources
 
+Bugfixes:
+* File not found exception when source not available
+
 ### 0.2.0
 Features:
 * Allow customisation of destination directory to store sources
