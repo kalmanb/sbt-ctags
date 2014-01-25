@@ -41,22 +41,36 @@ class CtagsPlugin extends Plugin {
       {
         val name = args._2
         val baseDir = state.configuration.baseDirectory
-        val dirs = IO.listFiles(baseDir / ExternalSourcesDir, DirectoryFilter)
-        val toRemove = dirs.filter(_.getPath.endsWith(name))
-        toRemove foreach (dir ⇒ {
-          IO.delete(dir)
-          println("Removed src dir %s".format(dir.getPath.replaceAll(baseDir + "/", "")))
-        })
+        val toRemove = getAllLocalModuleSrcDirs(state)
+        deleteLocalDepSrcDir(toRemove)
         updateCtags(baseDir)
       }
       state
     }
 
+  def ctagsRemoveAll = Command.command("ctagsRemoveAll",
+    Help("ctagsRemoveAll", ("", ""), "ctagsRemoveAll removes the sources of all modules and re-runs ctags")) { state ⇒
+      deleteLocalDepSrcDir(getAllLocalModuleSrcDirs(state))
+      state
+    }
+
+  def getAllLocalModuleSrcDirs(state: State): Seq[File] = {
+    val baseDir = state.configuration.baseDirectory
+    IO.listFiles(baseDir / ExternalSourcesDir, DirectoryFilter)
+  }
+
+  def deleteLocalDepSrcDir(dirs: Seq[File]): Unit = {
+    dirs foreach (dir ⇒ {
+      IO.delete(dir)
+      println("Removed src dir %s".format(dir.getPath.replaceAll(dir + "/", "")))
+    })
+  }
+
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources. Can be done on a project by project basis")
 
   def ctagsSettings: Seq[Setting[_]] = Seq[Setting[_]](
-    commands ++= Seq(ctagsAdd, ctagsRemove),
+    commands ++= Seq(ctagsAdd, ctagsRemove, ctagsRemoveAll),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
         streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))

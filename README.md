@@ -28,6 +28,8 @@ You can remove a library for your tags file with:
 
     > ctagsRemove <tab>...
     > ctagsRemove org.scala-lang...
+    ... or ...
+    > ctagsRemoveAll
 
 
 ## Installation
@@ -72,6 +74,7 @@ See (https://github.com/SublimeText/CTags)
     > help ctagsDownload
     > help ctagsAdd 
     > help ctagsRemove
+    > help ctagsRemoveAll
 
 ## Configuration
 The following can be customised as needed:
