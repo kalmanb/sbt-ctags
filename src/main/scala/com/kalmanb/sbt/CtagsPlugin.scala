@@ -26,12 +26,12 @@ class CtagsPlugin extends Plugin {
           val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
           val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
           srcFile match {
-            case None ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
-            case Some(srcJar) ⇒
+            case Some(srcJar) if (srcJar.exists) ⇒
               val dest = sourceDir(baseDir, moduleID)
               unzipSource(srcJar, dest)
+              updateCtags(baseDir)
+            case _ ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
           }
-          updateCtags(baseDir)
       }
       state
     }
