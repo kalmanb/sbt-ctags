@@ -2,7 +2,7 @@ organization := "com.kalmanb.sbt"
             
 name := "sbt-ctags"
 
-version := "0.3.0-SNAPSHOT"
+version := "0.3.0"
 
 crossBuildingSettings
 

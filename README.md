@@ -49,7 +49,7 @@ In one of these locations:
 
 Add:
 
-    addSbtPlugin("com.kalmanb.sbt" % "sbt-ctags" % "0.2.0")
+    addSbtPlugin("com.kalmanb.sbt" % "sbt-ctags" % "0.3.0")
 
 
 ### ctags installation
