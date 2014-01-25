@@ -7,10 +7,11 @@ import sbt.complete.DefaultParsers._
 import complete.Parser
 import scala.collection.mutable
 
-object CtagsPlugin extends Plugin {
+object CtagsPluginDefault extends CtagsPlugin
+
+class CtagsPlugin extends Plugin {
   /** Can be overridden to put in a different location */
   def ExternalSourcesDir = ".lib-src"
-
 
   def ctagsAdd = Command("ctagsAdd",
     Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
@@ -36,7 +37,8 @@ object CtagsPlugin extends Plugin {
     }
 
   def ctagsRemove = Command("ctagsRemove",
-    Help("ctagsRemove", ("", ""), "ctagsRemove <module> removes the module source and re-runs ctags"))(ctagsRemoveParser) { (state, args) ⇒ {
+    Help("ctagsRemove", ("", ""), "ctagsRemove <module> removes the module source and re-runs ctags"))(ctagsRemoveParser) { (state, args) ⇒
+      {
         val name = args._2
         val baseDir = state.configuration.baseDirectory
         val dirs = IO.listFiles(baseDir / ExternalSourcesDir, DirectoryFilter)
@@ -53,7 +55,7 @@ object CtagsPlugin extends Plugin {
   val ctagsDownload = TaskKey[Unit]("ctagsDownload",
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources. Can be done on a project by project basis")
 
-  override def settings: Seq[Setting[_]] = Seq[Setting[_]](
+  def ctagsSettings: Seq[Setting[_]] = Seq[Setting[_]](
     commands ++= Seq(ctagsAdd, ctagsRemove),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
@@ -62,6 +64,10 @@ object CtagsPlugin extends Plugin {
         EvaluateTask(structure, Keys.updateClassifiers, state, thisProjectRef, EvaluateTask defaultConfig state)
     }
   )
+
+  override def settings: Seq[Setting[_]] = {
+    ctagsSettings
+  }
 
   def getAllModulesFromAllProjects(state: State): Set[ModuleID] = {
     val structure = Project.extract(state).structure
@@ -130,17 +136,17 @@ object CtagsPlugin extends Plugin {
     }
 
   lazy val ctagsRemoveParser: State ⇒ Parser[(Seq[Char], String)] =
-      (state: State) ⇒ {
-        val baseDir = state.configuration.baseDirectory
-        val sourcesDir = baseDir / ExternalSourcesDir
-        val dirs = IO.listFiles(sourcesDir, DirectoryFilter)
-        val shortNames = dirs.map(_.getPath.replaceAll(sourcesDir.getPath + "/", ""))
-        val tokens = shortNames.map(name ⇒ token(name))
-        tokens.size match {
-          case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
-          case n if (n == 1) ⇒ Space ~ tokens.head
-          case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
-        }
+    (state: State) ⇒ {
+      val baseDir = state.configuration.baseDirectory
+      val sourcesDir = baseDir / ExternalSourcesDir
+      val dirs = IO.listFiles(sourcesDir, DirectoryFilter)
+      val shortNames = dirs.map(_.getPath.replaceAll(sourcesDir.getPath + "/", ""))
+      val tokens = shortNames.map(name ⇒ token(name))
+      tokens.size match {
+        case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
+        case n if (n == 1) ⇒ Space ~ tokens.head
+        case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
+      }
     }
 
   def evaluateTask[A](key: TaskKey[A], ref: ProjectRef, state: State): Option[(sbt.State, sbt.Result[A])] = {

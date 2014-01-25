@@ -61,7 +61,7 @@ Add the following to you `~/.vimrc`
 
 
 ### emacs installation
-TBC
+Please contribute
 
 
 ### sublime installation
@@ -74,12 +74,12 @@ See (https://github.com/SublimeText/CTags)
     > help ctagsRemove
 
 ## Configuration
-The following can be extended as necessary. Examples to follow soon.
+The following can be customised as needed:
 
-    def ExternalSourcesDir = ".lib-src"
-    def updateCtags(baseDirectory: File): Unit = {
-    }
-  
+* The directory where sources are unzipped
+* The command that gets called after ctagsAdd and ctagRemove. This allows you to call other external tools such as gtags etc.
+
+For details on how to customise see: https://github.com/kalmanb/sbt-ctags/blob/master/conf/CustomCtagsPlugin.scala
 
 ## Contributing / Compiling
 Go for it!
