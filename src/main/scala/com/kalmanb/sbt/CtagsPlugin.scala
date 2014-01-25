@@ -54,6 +54,15 @@ class CtagsPlugin extends Plugin {
       state
     }
 
+  def ctagsShowCurrent = Command.command("ctagsShowCurrent",
+    Help("ctagsShowCurrent", ("", ""), "ctagsShowCurrent show the current sources that have been included")) { state ⇒
+      getAllLocalModuleSrcDirs(state) foreach { fullDir ⇒
+        val name = fullDir.toString.split("/").last
+        println(name)
+      }
+      state
+    }
+
   def getAllLocalModuleSrcDirs(state: State): Seq[File] = {
     val baseDir = state.configuration.baseDirectory
     IO.listFiles(baseDir / ExternalSourcesDir, DirectoryFilter)
@@ -70,7 +79,7 @@ class CtagsPlugin extends Plugin {
     "Downloads sources for dependencies so they can be added the project. This will download all dependencies sources. Can be done on a project by project basis")
 
   def ctagsSettings: Seq[Setting[_]] = Seq[Setting[_]](
-    commands ++= Seq(ctagsAdd, ctagsRemove, ctagsRemoveAll),
+    commands ++= Seq(ctagsAdd, ctagsRemove, ctagsRemoveAll, ctagsShowCurrent),
     ctagsDownload <<= (thisProjectRef, state, defaultConfiguration, streams) map {
       (thisProjectRef, state, conf, streams) ⇒
         streams.log.debug("Downloading artifacts for %s".format(thisProjectRef))
