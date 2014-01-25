@@ -50,7 +50,10 @@ class CtagsPlugin extends Plugin {
           case s                      ⇒ s
         }
         val baseDir = state.configuration.baseDirectory
-        val toRemove = getAllLocalModuleSrcDirs(state).filter(_.getPath.endsWith(searchTerm))
+        val toRemove = getAllLocalModuleSrcDirs(state).filter(fullPath ⇒ {
+          val dir = fullPath.getPath.split("/").last
+          dir.startsWith(searchTerm)
+        })
         deleteLocalDepSrcDir(toRemove)
         updateCtags(baseDir)
       }
