@@ -14,7 +14,7 @@ class CtagsPlugin extends Plugin {
   def ExternalSourcesDir = ".lib-src"
 
   def ctagsAdd = Command("ctagsAdd",
-    Help("ctagsAdd", ("", ""), "ctagsAdd <module-id>(*) : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
+    Help("ctagsAdd", ("", ""), "ctagsAdd <module-id>(*) : unzip the module src into .lib-src/ and re-run ctags. Modules with [*NA] do not have sources - try ctagsDownload"))(ctagsAddParser) { (state, args) ⇒
       val searchTerm = args._1(0) match {
         case s if (s.endsWith("*")) ⇒ s.dropRight(1)
         case s                      ⇒ s
@@ -22,19 +22,23 @@ class CtagsPlugin extends Plugin {
       val baseDir = state.configuration.baseDirectory
       val allModules = getAllModulesFromAllProjects(state) map (_.toString)
 
-      allModules.filter(_ startsWith searchTerm) foreach { module ⇒
+      val updated = allModules.filter(_ startsWith searchTerm) flatMap { module ⇒
         val splits = module.split(":")
         val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
-        val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
-        srcFile match {
-          case Some(srcJar) if (srcJar.exists) ⇒
-            val dest = sourceDir(baseDir, moduleID)
-            unzipSource(srcJar, dest)
-            println(s"Added source for $module")
-          case _ ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
-        }
+        val srcFile = getSrcFromIvy(state, moduleID)
+        if (srcFile.exists) {
+          val dest = sourceDir(baseDir, moduleID)
+          unzipSource(srcFile, dest)
+          println("Added source for %s".format(module))
+          Some(moduleID)
+        } else None
       }
-      updateCtags(baseDir)
+
+      if (updated.size > 0)
+        updateCtags(baseDir)
+      else
+        println("Error could not find source for %s, please try ctagsDownload".format(args._1(0)))
+
       state
     }
 
@@ -129,14 +133,17 @@ class CtagsPlugin extends Plugin {
     baseDirectory / ExternalSourcesDir / dir
   }
 
-  def getSrcFromIvy(state: State, moduleID: ModuleID): Option[File] = {
+  def getSrcFromIvy(state: State, moduleID: ModuleID): File = {
+    getSrcFile(ivyDir(state), moduleID)
+  }
+
+  def ivyDir(state: State): File = {
     val extracted = Project.extract(state)
-    val ivyDir = extracted.get(ivyPaths).ivyHome match {
+    extracted.get(ivyPaths).ivyHome match {
       case None ⇒
-        println("Error could not find ivyHome"); None
-      case Some(dir) ⇒ Some(dir / "cache")
+        throw new Exception("Error could not find ivyHome")
+      case Some(dir) ⇒ dir / "cache"
     }
-    for { ivy ← ivyDir } yield getSrcFile(ivy, moduleID)
   }
 
   def getSrcFile(ivyDir: File, moduleID: ModuleID): File = {
@@ -154,9 +161,15 @@ class CtagsPlugin extends Plugin {
   import Project._
   def ctagsAddParser: (State) ⇒ Parser[(Seq[String], Seq[String])] = { (state) ⇒
     import sbt.complete.DefaultParsers._
-    val modules = getAllModulesFromAllProjects(state) map (_.toString)
-    val cleanOptions = modules map (_.replace(":test", "").replace("()", "").trim)
-    val selectTests = distinctParser(cleanOptions, true)
+    val modules = getAllModulesFromAllProjects(state)
+    val available = modules map (module ⇒ {
+      val name = module.toString.replace(":test", "").replace("()", "").trim
+      if (getSrcFile(ivyDir(state), module).exists)
+        name
+      else
+        name + "[*NA]"
+    })
+    val selectTests = distinctParser(available, true)
     val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
     selectTests ~ options
   }

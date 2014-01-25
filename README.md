@@ -118,6 +118,7 @@ Features:
 * Add ctagsShowCurrent
 * Add version numbers sources
 * Support wildcards in ctagsAdd and ctagsRemove
+* Prepend [*NA] for modules without sources
 
 Bugfixes:
 * File not found exception when source not available
