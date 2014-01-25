@@ -30,6 +30,8 @@ You can remove a library for your tags file with:
     > ctagsRemove org.scala-lang...
     ... or ...
     > ctagsRemoveAll
+    ... or ...
+    > ctagsRemove *
 
 
 ## Installation
@@ -115,6 +117,7 @@ Features:
 * Add ctagsRemoveAll
 * Add ctagsShowCurrent
 * Add version numbers sources
+* Support wildcards in ctagsAdd and ctagsRemove
 
 Bugfixes:
 * File not found exception when source not available

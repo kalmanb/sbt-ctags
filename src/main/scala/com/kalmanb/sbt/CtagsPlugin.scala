@@ -14,34 +14,39 @@ class CtagsPlugin extends Plugin {
   def ExternalSourcesDir = ".lib-src"
 
   def ctagsAdd = Command("ctagsAdd",
-    Help("ctagsAdd", ("", ""), "ctagsAdd <module-id> : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
+    Help("ctagsAdd", ("", ""), "ctagsAdd <module-id>(*) : unzip the module src into .lib-src/ and re-run ctags"))(ctagsAddParser) { (state, args) ⇒
+      val searchTerm = args._1(0) match {
+        case s if (s.endsWith("*")) ⇒ s.dropRight(1)
+        case s                      ⇒ s
+      }
       val baseDir = state.configuration.baseDirectory
       val allModules = getAllModulesFromAllProjects(state) map (_.toString)
 
-      allModules.filter(_ startsWith args._2).headOption match {
-        case None ⇒
-          println("Error could not find %s in dependencies".format(args)); None
-        case Some(module) ⇒
-          val splits = module.split(":")
-          val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
-          val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
-          srcFile match {
-            case Some(srcJar) if (srcJar.exists) ⇒
-              val dest = sourceDir(baseDir, moduleID)
-              unzipSource(srcJar, dest)
-              updateCtags(baseDir)
-            case _ ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
-          }
+      allModules.filter(_ startsWith searchTerm) foreach { module ⇒
+        val splits = module.split(":")
+        val moduleID = new ModuleID(organization = splits(0), name = splits(1), revision = splits(2))
+        val srcFile: Option[File] = getSrcFromIvy(state, moduleID)
+        srcFile match {
+          case Some(srcJar) if (srcJar.exists) ⇒
+            val dest = sourceDir(baseDir, moduleID)
+            unzipSource(srcJar, dest)
+            println(s"Added source for $module")
+          case _ ⇒ println("Error could not find source for %s, please try ctagsDownload".format(moduleID))
+        }
       }
+      updateCtags(baseDir)
       state
     }
 
   def ctagsRemove = Command("ctagsRemove",
-    Help("ctagsRemove", ("", ""), "ctagsRemove <module> removes the module source and re-runs ctags"))(ctagsRemoveParser) { (state, args) ⇒
+    Help("ctagsRemove", ("", ""), "ctagsRemove <module>(*) removes the module source and re-runs ctags"))(ctagsRemoveParser) { (state, args) ⇒
       {
-        val name = args._2
+        val searchTerm = args._1(0) match {
+          case s if (s.endsWith("*")) ⇒ s.dropRight(1)
+          case s                      ⇒ s
+        }
         val baseDir = state.configuration.baseDirectory
-        val toRemove = getAllLocalModuleSrcDirs(state)
+        val toRemove = getAllLocalModuleSrcDirs(state).filter(_.getPath.endsWith(searchTerm))
         deleteLocalDepSrcDir(toRemove)
         updateCtags(baseDir)
       }
@@ -147,30 +152,35 @@ class CtagsPlugin extends Plugin {
   }
 
   import Project._
-  lazy val ctagsAddParser: State ⇒ Parser[(Seq[Char], String)] =
-    (state: State) ⇒ {
-      val options = getAllModulesFromAllProjects(state) map (_.toString)
-      val cleanOptions = options map (_.replace(":test", "").replace("()", "").trim)
-      val tokens = (cleanOptions map (token(_))).toSet
-      tokens.size match {
-        case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
-        case n if (n == 1) ⇒ Space ~ tokens.head
-      }
-    }
+  def ctagsAddParser: (State) ⇒ Parser[(Seq[String], Seq[String])] = { (state) ⇒
+    import sbt.complete.DefaultParsers._
+    val modules = getAllModulesFromAllProjects(state) map (_.toString)
+    val cleanOptions = modules map (_.replace(":test", "").replace("()", "").trim)
+    val selectTests = distinctParser(cleanOptions, true)
+    val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
+    selectTests ~ options
+  }
 
-  lazy val ctagsRemoveParser: State ⇒ Parser[(Seq[Char], String)] =
-    (state: State) ⇒ {
-      val baseDir = state.configuration.baseDirectory
-      val sourcesDir = baseDir / ExternalSourcesDir
-      val dirs = IO.listFiles(sourcesDir, DirectoryFilter)
-      val shortNames = dirs.map(_.getPath.replaceAll(sourcesDir.getPath + "/", ""))
-      val tokens = shortNames.map(name ⇒ token(name))
-      tokens.size match {
-        case n if (n > 1)  ⇒ Space ~ tokens.reduce(_ | _)
-        case n if (n == 1) ⇒ Space ~ tokens.head
-        case _             ⇒ Space ~ token("no sources are currently included in %s".format(ExternalSourcesDir))
-      }
+  def ctagsRemoveParser: (State) ⇒ Parser[(Seq[String], Seq[String])] = { (state) ⇒
+    import sbt.complete.DefaultParsers._
+    val baseDir = state.configuration.baseDirectory
+    val sourcesDir = baseDir / ExternalSourcesDir
+    val dirs = IO.listFiles(sourcesDir, DirectoryFilter)
+    val modules = dirs.map(_.getPath.replaceAll(sourcesDir.getPath + "/", "")).toSet
+    val selectTests = distinctParser(modules, true)
+    val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
+    selectTests ~ options
+  }
+
+  def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] = {
+    import sbt.complete.DefaultParsers._
+    val base = token(Space) ~> token(NotSpace - "--" examples exs)
+    val recurse = base flatMap { ex ⇒
+      val (matching, notMatching) = exs.partition(GlobFilter(ex).accept _)
+      distinctParser(notMatching, raw) map { result ⇒ if (raw) ex +: result else matching.toSeq ++ result }
     }
+    recurse ?? Nil
+  }
 
   def evaluateTask[A](key: TaskKey[A], ref: ProjectRef, state: State): Option[(sbt.State, sbt.Result[A])] = {
     EvaluateTask(Project.extract(state).structure, key, state, ref, EvaluateTask defaultConfig state)
