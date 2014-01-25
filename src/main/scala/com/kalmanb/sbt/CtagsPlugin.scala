@@ -111,7 +111,7 @@ class CtagsPlugin extends Plugin {
   }
 
   def sourceDir(baseDirectory: File, moduleId: ModuleID): File = {
-    val dir = moduleId.organization + "." + moduleId.name
+    val dir = moduleId.organization + "." + moduleId.name + ":" + moduleId.revision
     baseDirectory / ExternalSourcesDir / dir
   }
 
