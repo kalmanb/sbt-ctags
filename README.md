@@ -120,7 +120,7 @@ Tip: you can run `~/publish-local` in the main dir and `reload` in the playgroun
 Features:
 * Add ctagsRemoveAll
 * Add ctagsShowCurrent
-* Add version numbers sources
+* Add version numbers to source directories
 * Support wildcards in ctagsAdd and ctagsRemove
 * Prepend [*NA] for modules without sources
 
