@@ -158,7 +158,7 @@ class CtagsPlugin extends Plugin {
    * or a different indexer is used
    */
   def updateCtags(baseDirectory: File): Unit = {
-    "ctags" !
+    "ctags -R" !
   }
 
   import Project._
